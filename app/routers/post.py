@@ -1,8 +1,18 @@
-from fastapi import APIRouter, Depends, UploadFile, HTTPException, Form, Query, status
+from fastapi import (
+    APIRouter, 
+    Depends, 
+    UploadFile, 
+    HTTPException, 
+    Form, 
+    Query, 
+    status, 
+    BackgroundTasks
+    )
 from fastapi.responses import FileResponse
 from db.database import db, Session
 from schemas import post as schema
 from models import post as models, interaction as iModels
+from core.background_tasks import increment_views
 from core.oauth import get_current_user, get_optional_user
 from dependencies import validate_upload_file
 from sqlalchemy import desc, func
@@ -12,6 +22,7 @@ import os
 import uuid
 from typing import Optional, List
 import json
+from datetime import datetime
 
 router = APIRouter(
     prefix='/posts',
@@ -183,6 +194,7 @@ async def list_posts(
 @router.get('/{post_id}', response_model = schema.PostResponse)
 async def get_post_by_id(
     post_id: str, 
+    background_tasks: BackgroundTasks,
     db: Session= Depends(db)
 ):
     post = db.query(models.Post).filter(
@@ -192,9 +204,7 @@ async def get_post_by_id(
         models.Post.created_at.desc()
     ).first()
 
-    post.views += 1
-    db.add(post)
-    db.commit()
+    background_tasks.add_task(increment_views, post_id)
 
     return post
 
@@ -248,6 +258,8 @@ async def update_post(
         # Replace post.tags collection (SQLAlchemy manages PostTag rows)
         post.tags = tags_for_post
 
+    post.updated_at = datetime.now()
+    
     db.add(post)
     db.commit()
     db.refresh(post)
