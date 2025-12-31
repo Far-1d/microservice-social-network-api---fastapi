@@ -1,0 +1,4 @@
+.env
+app/media/
+project_venv/
+**/__pycache__/
