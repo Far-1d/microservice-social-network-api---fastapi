@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from routers import post, interactions
+from routers import post, interactions, stats
 from db import database
 
 app = FastAPI()
@@ -17,3 +17,4 @@ database.Base.metadata.create_all(bind=database.engine)
 
 app.include_router(post.router, prefix='/api')
 app.include_router(interactions.router, prefix='/api')
+app.include_router(stats.router, prefix='/api')

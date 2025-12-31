@@ -25,3 +25,14 @@ class Comment(BaseModel):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
     post_id = Column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='CASCADE'), nullable=False, index=True)
     content = Column(Text)
+
+
+class Bookmark(BaseModel):
+    __tablename__ = 'bookmarks'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'post_id', name='unique_bookmark'),
+        {'extend_existing': True}
+    )
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
+    post_id = Column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='CASCADE'), nullable=False, index=True)
