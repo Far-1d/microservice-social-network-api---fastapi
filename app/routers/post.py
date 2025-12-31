@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Form, Query, 
 from fastapi.responses import FileResponse
 from db.database import db, Session
 from schemas import post as schema
-from models import post as models
+from models import post as models, interaction as iModels
 from core.oauth import get_current_user, get_optional_user
 from dependencies import validate_upload_file
-from sqlalchemy import desc
+from sqlalchemy import desc, func
+from sqlalchemy.orm import selectinload
 import shutil
 import os
 import uuid
@@ -110,7 +111,7 @@ async def list_posts(
     )
     
     if current_user_id:
-        q = db.query(models.Post).filter(
+        q = q.filter(
             models.Post.user_id != uuid.UUID(current_user_id)
         )
     
@@ -126,12 +127,56 @@ async def list_posts(
              .distinct()
         )
 
-    posts = (
+    post_stmt = (
         q.order_by(models.Post.created_at.desc())
-         .offset(offset)
-         .limit(limit)
-         .all()
+        .offset(offset)
+        .limit(limit)
     )
+    post_ids = [p.id for p in post_stmt.all()]
+    
+    if not post_ids:
+        return []
+
+    posts = (
+        db.query(models.Post)
+        .options(selectinload(models.Post.tags))
+        .filter(models.Post.id.in_(post_ids))
+        .order_by(models.Post.created_at.desc())
+        .all()
+    )
+    
+    # Get counts in bulk
+    like_counts = dict(
+        db.query(iModels.Like.post_id, func.count())
+        .filter(iModels.Like.post_id.in_([p.id for p in posts]))
+        .group_by(iModels.Like.post_id)
+        .all()
+    )
+
+    comment_counts = dict(
+        db.query(iModels.Comment.post_id, func.count())
+        .filter(iModels.Comment.post_id.in_([p.id for p in posts]))
+        .group_by(iModels.Comment.post_id)
+        .all()
+    )
+    
+    if current_user_id:
+        bookmark_counts = dict(
+            db.query(iModels.Bookmark.post_id, func.count())
+            .filter(
+                iModels.Bookmark.post_id.in_([p.id for p in posts]),
+                iModels.Bookmark.user_id == uuid.UUID(current_user_id)
+            )
+            .group_by(iModels.Bookmark.post_id)
+            .all()
+        )
+
+    # Attach counts to posts
+    for post in posts:
+        post.likes_count = like_counts.get(post.id, 0)
+        post.comments_count = comment_counts.get(post.id, 0)
+        if current_user_id:
+            post.is_bookmarked = bool(bookmark_counts.get(post.id, 0))
 
     return posts
 
@@ -146,6 +191,10 @@ async def get_post_by_id(
     ).order_by(
         models.Post.created_at.desc()
     ).first()
+
+    post.views += 1
+    db.add(post)
+    db.commit()
 
     return post
 
