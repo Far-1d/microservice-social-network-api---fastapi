@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from db.database import db, Session
 from schemas import post as schema
 from models import post as models, interaction as iModels
-from core.background_tasks import increment_views
+from core.background_tasks import increment_views, notify_new_post
 from core.oauth import get_current_user, get_optional_user
 from dependencies import validate_upload_file
 from sqlalchemy import desc, func
@@ -44,13 +44,14 @@ def get_file_path(file: UploadFile, user_id:str):
 
 
 @router.get('/tags', response_model=List[schema.TagBase])
-async def list_posts(db: Session= Depends(db)):
+async def list_tags(db: Session= Depends(db)):
     tags = db.query(models.Tag).all()
 
     return tags
 
 @router.post('/')
 async def create_posts(
+    background_tasks: BackgroundTasks,
     caption:str = Form(...),
     tags:str = Form("[]"),
     file: UploadFile = Depends(validate_upload_file), 
@@ -96,9 +97,12 @@ async def create_posts(
         db.add(db_post)
         db.commit()
         db.refresh(db_post)
-        
-        # 6. Return response with user info
-        # return await get_post_response(db, db_post, user_id)
+
+        background_tasks.add_task(
+            notify_new_post,
+            db_post.id,        # post id
+            user_id,        # author id
+        )
         return {**db_post.__dict__}
 
     except Exception as e:
@@ -115,7 +119,7 @@ async def list_posts(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user_id: Optional[str] = Depends(get_optional_user),
-    db: Session= Depends(db)
+    db: Session= Depends(db),
 ):
     q = db.query(models.Post).filter(
         models.Post.soft_delete == False,

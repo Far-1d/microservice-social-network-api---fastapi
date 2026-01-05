@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, status, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Form, status, Path, Query
 from db.database import db, Session
 from schemas import interaction as schema, post as post_schema
 from models import (
@@ -6,6 +6,7 @@ from models import (
     interaction as iModels
 )
 from core.oauth import get_current_user
+from core.background_tasks import notify_post_liked, notify_new_comment
 from sqlalchemy import func
 import uuid
 from typing import List
@@ -18,6 +19,7 @@ router = APIRouter(
 
 @router.post('/likes')
 async def toggle_like(
+    background_tasks: BackgroundTasks,
     post_id:str = Form(...),
     user_id:str = Depends(get_current_user),
     db: Session = Depends(db)
@@ -39,13 +41,22 @@ async def toggle_like(
         db.delete(already_liked)
         db.commit()
         return { 'value': 0 } # like removed
-    
+
     like = iModels.Like(
         post_id = post.id,
         user_id = uuid.UUID(user_id)
     )
     db.add(like)
     db.commit()
+
+    # like notification
+    background_tasks.add_task(
+        notify_post_liked,
+        post_id,        # post id
+        user_id,        # liker id
+        post.user_id,   # author id
+    )
+
     return { 'value': 1 } # liked
 
 
@@ -94,6 +105,7 @@ async def list_likes_by_user(
 
 @router.post('/comments', response_model=schema.CommentResponse)
 async def comment_on_post(
+    background_tasks: BackgroundTasks,
     post_id:str = Form(...),
     comment:str = Form(...),
     user_id:str = Depends(get_current_user),
@@ -114,6 +126,15 @@ async def comment_on_post(
     )
     db.add(post_comment)
     db.commit()
+    
+    background_tasks.add_task(
+        notify_new_comment,
+        post_id,        # post id
+        user_id,        # liker id
+        post.user_id,   # author id
+        comment
+    )
+
     return post_comment
 
 
