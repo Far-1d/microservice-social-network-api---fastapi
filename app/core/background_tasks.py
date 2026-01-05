@@ -27,23 +27,20 @@ async def notify_new_post(post_id: str, author_id:str):
     """Called when someone comments"""
     print('notifying userssss')
     correlation_id = await request_manager.request_data(author_id, 'request-followers')
-    if not correlation_id:
-        return
     
-    follower_ids = await response_manager.wait_for_response(correlation_id, timeout=30)
+    if correlation_id:
+        follower_ids = await response_manager.wait_for_response(correlation_id, timeout=30)
 
-    if not follower_ids:
-        return
-    
-    await notifications.notify_users(
-        follower_ids,
-        "new_post",
-        {
-            "user_id": str(author_id),
-            "post_id": post_id,
-            "type": "post"
-        }
-    )
+        if follower_ids:
+            await notifications.notify_users(
+                follower_ids,
+                "new_post",
+                {
+                    "user_id": str(author_id),
+                    "post_id": post_id,
+                    "type": "post"
+                }
+            )
 
 # To Do: cache likes to prevent repeating notifications
 async def notify_post_liked(post_id: str, liker_id: str, author_id: str):
