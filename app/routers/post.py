@@ -15,7 +15,7 @@ from models import post as models, interaction as iModels
 from core.background_tasks import increment_views, notify_new_post
 from core.oauth import get_current_user, get_optional_user
 from dependencies import validate_upload_file
-from sqlalchemy import desc, func
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 import shutil
 import os
@@ -23,6 +23,8 @@ import uuid
 from typing import Optional, List
 import json
 from datetime import datetime
+from core.cache import get_redis
+from core.communications import request_manager, response_manager
 
 router = APIRouter(
     prefix='/posts',
@@ -119,7 +121,8 @@ async def list_posts(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user_id: Optional[str] = Depends(get_optional_user),
-    db: Session= Depends(db),
+    db: Session = Depends(db),
+    redis = Depends(get_redis),
 ):
     q = db.query(models.Post).filter(
         models.Post.soft_delete == False,
@@ -129,7 +132,35 @@ async def list_posts(
         q = q.filter(
             models.Post.user_id != uuid.UUID(current_user_id)
         )
-    
+
+        blocked_user_ids = []
+
+        # check cache for blocked-users
+        key = f'blocked_users:{current_user_id}'
+        cached = await redis.get(key)
+        
+        if cached:
+            blocked_user_ids = json.loads(cached)
+        else:
+            # get list of blocked users from user service
+            correlation_id = await request_manager.request_data(current_user_id, 'request-blocked-users')
+            if correlation_id:
+                response = await response_manager.wait_for_response(correlation_id, timeout=30)
+                if response and response.get('status') == '200':
+
+                    # don't show any post from both users that blocked current user and 
+                    # user that current user blocked them
+                    blocked_user_ids = response['blocked_users'] + response['blocked_by_users']
+
+                    await redis.setex(key, 60*15, json.dumps(blocked_user_ids))
+
+        if blocked_user_ids:
+            blocked_user_ids = [uuid.UUID(pk) for pk in blocked_user_ids]
+
+            q = q.filter(
+                models.Post.user_id.not_in(blocked_user_ids)
+            )
+
     if user:
         q = q.filter(models.Post.user_id == uuid.UUID(user))
     
@@ -208,8 +239,10 @@ async def get_post_by_id(
         models.Post.created_at.desc()
     ).first()
 
-    background_tasks.add_task(increment_views, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
 
+    background_tasks.add_task(increment_views, post_id)
     return post
 
 @router.patch('/{post_id}', response_model = schema.PostResponse)
