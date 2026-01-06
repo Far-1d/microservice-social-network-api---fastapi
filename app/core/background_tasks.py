@@ -25,7 +25,6 @@ async def increment_views( post_id: str ):
 
 async def notify_new_post(post_id: str, author_id:str):
     """Called when someone comments"""
-    print('notifying userssss')
     correlation_id = await request_manager.request_data(author_id, 'request-followers')
     
     if correlation_id:
