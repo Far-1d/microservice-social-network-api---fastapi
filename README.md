@@ -51,22 +51,34 @@ pip install -r requirements.txt
 ```
 
 2. **Configure environment**
-rename .env.example to .env and file the arguments with proper value;
+rename .env.example to .env and fill the arguments with proper value;
 values are equal with those from django service's drf-simplejwt config.
 
 
-3. **Database setup**
+3. **Docker setup**
+kafka and redis are required in order to start the fastapi server
 ```bash
-# Run migrations
-alembic upgrade head
-
-# Or create tables directly
-python -c "from app.db.database import Base, engine; Base.metadata.create_all(bind=engine)"
+# Start docker compose
+docker compose -f ./kafka.docker-compose.yml up
 ```
+the kafka server might take around a minute to initiate 
+
+3.5 **Django Server**
+this app communicates with the django app for user authentications and informations;
+go to the django directory and use this command 
+```bash
+# Start kafka consumer on django 
+python manage.py kafka_consumer --settings=settings.settings.dev
+```
+this is different from the main django server and its only purpose is to communicate 
+with fastapi
+
 
 4. **Run the server**
 ```bash
-uvicorn app.main:app --reload --port 8001
+cd app
+
+uvicorn main:app --reload --port 8001
 ```
 
 ---
