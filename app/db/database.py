@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.dialects.sqlite import *
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
+import os
 
 # change to production level db
 SQLALCHEMY_DATABASE_URL = 'sqlite:///db.sqlite3'
@@ -11,13 +12,12 @@ engine = create_engine(
     connect_args={'check_same_thread': False}   # only for sqlite
 )
 
-# Reflect existing tables (including Django's 'users')
 metadata = MetaData()
-metadata.reflect(bind=engine)
+Base = declarative_base()
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base(metadata=metadata)
 
 def db():
     db = SessionLocal()

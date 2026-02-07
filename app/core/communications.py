@@ -68,7 +68,6 @@ class FollowersResponseManager:
     async def _consume_responses(self):
         try:
             async for msg in self.consumer:
-                print('--------------- new message topic: ', msg.topic)
                 correlation_id = msg.key.decode()
                 self.responses[correlation_id] = msg.value
         finally:

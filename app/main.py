@@ -6,6 +6,7 @@ from db import database
 from contextlib import asynccontextmanager
 from core.communications import request_manager, response_manager
 from core.cache import redis_client
+from core.events import user_events
 
 
 @asynccontextmanager
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
     print('kafka is ready')
 
     await redis_client.ping()
+    await user_events.startup()
     print('redis is ready')
 
     yield  # The app runs here
@@ -27,6 +29,7 @@ async def lifespan(app: FastAPI):
     await request_manager.shutdown()
     print('kafka shutdown')
 
+    await user_events.shutdown()
     await redis_client.close()
     print('redis shutdown')
 

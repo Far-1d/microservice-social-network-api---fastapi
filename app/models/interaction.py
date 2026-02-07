@@ -1,7 +1,7 @@
 # interaction.py
 from sqlalchemy import Column, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from .base import BaseModel
+from models.base import BaseModel
 
 class Like(BaseModel):
     __tablename__ = 'likes'
@@ -10,7 +10,7 @@ class Like(BaseModel):
         {'extend_existing': True}
     )
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_references.user_id", ondelete='CASCADE'), nullable=False, index=True)
     post_id = Column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='CASCADE'), nullable=False, index=True)
 
 
@@ -22,7 +22,7 @@ class Comment(BaseModel):
         {'extend_existing': True}
     )
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_references.user_id", ondelete='CASCADE'), nullable=False, index=True)
     post_id = Column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='CASCADE'), nullable=False, index=True)
     content = Column(Text)
 
@@ -34,5 +34,5 @@ class Bookmark(BaseModel):
         {'extend_existing': True}
     )
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_references.user_id", ondelete='CASCADE'), nullable=False, index=True)
     post_id = Column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='CASCADE'), nullable=False, index=True)
