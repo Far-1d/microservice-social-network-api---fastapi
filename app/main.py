@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     print('kafka shutdown')
 
     await user_events.shutdown()
-    await redis_client.close()
+    await redis_client.aclose()
     print('redis shutdown')
 
     print("Shutdown complete!")

@@ -71,7 +71,7 @@ class FollowersResponseManager:
                 correlation_id = msg.key.decode()
                 self.responses[correlation_id] = msg.value
         finally:
-            self.consumer.stop()
+            await self.consumer.stop()
 
     async def wait_for_response(self, correlation_id: str, timeout: float = 15.0) -> Optional[dict]:
         start = asyncio.get_event_loop().time()

@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.dialects.sqlite import *
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session, declarative_base
 import os
 
 # change to production level db
