@@ -92,11 +92,8 @@ class UserEventManager:
             )
             if not existing_user:
                     return
-            
-            existing_user.is_active = False
-            existing_user.synced_at = datetime.now(timezone.utc)
 
-            self.db.add(existing_user)
+            self.db.delete(existing_user)
             self.db.commit()
         except Exception as e:
              print('delete user exception : ', e)
