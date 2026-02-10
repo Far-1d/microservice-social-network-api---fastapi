@@ -34,7 +34,12 @@ router = APIRouter(
 
 
 def get_file_path(file: UploadFile, user_id:str):
-    user_dir = f"media/posts/{user_id}"
+    environ = os.environ.get('environment')
+    if environ == 'test':
+        user_dir = f"tests/media/posts/{user_id}"
+    else:
+        user_dir = f"media/posts/{user_id}"
+        
     os.makedirs(user_dir, exist_ok=True)
     
     # Generate unique filename
@@ -75,7 +80,7 @@ async def create_posts(
         db_post = models.Post(
             user_id=uuid.UUID(user_id),
             file_path=file_path,
-            caption=caption,
+            caption=caption.strip(),
         )
         db.add(db_post)
         db.flush()  # Get post ID without committing
@@ -93,8 +98,7 @@ async def create_posts(
                     db.add(tag)
                     db.flush()  # Get tag ID without committing
                 
-                post_tag = models.PostTag(post_id=db_post.id, tag_id=tag.id)
-                db.add(post_tag)
+                db_post.tags.append(tag)
         
         db.add(db_post)
         db.commit()
@@ -116,7 +120,7 @@ async def create_posts(
 
 @router.get('/', response_model = List[schema.PostResponse])
 async def list_posts(
-    tags: Optional[str] = Query(None, description="Tag names, e.g. ?tags=python&tags=fastapi"),
+    tags: Optional[str] = Query(None, description="Tag names, e.g. ?tags=python,fastapi"),
     user: Optional[str] = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -162,14 +166,20 @@ async def list_posts(
             )
 
     if user:
-        q = q.filter(models.Post.user_id == uuid.UUID(user))
+        try:
+            user_id = uuid.UUID(user)
+        except:
+            raise HTTPException(400, detail='Invalid user id')
+        
+        q = q.filter(models.Post.user_id == user_id)
     
     if tags:
-        tags = tags.split(',')
+        tag_names = [t.strip() for t in tags.split(',') if t.strip()]
+
         q = (
-            q.join(models.PostTag, models.Post.id == models.PostTag.post_id)
-             .join(models.Tag, models.Tag.id == models.PostTag.tag_id)
-             .filter(models.Tag.name.in_(tags))
+            q.join(models.post_tags, models.Post.id == models.post_tags.c.post_id)
+             .join(models.Tag, models.Tag.id == models.post_tags.c.tag_id)
+             .filter(models.Tag.name.in_(tag_names))
              .distinct()
         )
 
@@ -232,8 +242,13 @@ async def get_post_by_id(
     background_tasks: BackgroundTasks,
     db: Session= Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+    
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id),
+        models.Post.id == valid_post_id,
         models.Post.soft_delete == False,
     ).order_by(
         models.Post.created_at.desc()
@@ -252,8 +267,13 @@ async def update_post(
     user_id: str = Depends(get_current_user),
     db: Session= Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+    
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id),
+        models.Post.id == valid_post_id,
         models.Post.soft_delete == False
     ).first()
 
@@ -308,8 +328,13 @@ async def delete_post(
     user_id: str = Depends(get_current_user),
     db: Session= Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id),
+        models.Post.id == valid_post_id,
         models.Post.soft_delete == False
     ).first()
 
@@ -332,16 +357,20 @@ async def serve_post_media(
     user_id: str = Depends(get_current_user),
     db: Session = Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+    
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id), 
-        models.Post.user_id == uuid.UUID(user_id)
+        models.Post.id == valid_post_id,
+        models.Post.soft_delete == False
     ).first()
     
-    if not post or post.soft_delete:
+    if not post:
         raise HTTPException(404, "Post not found")
-        
+    
     return FileResponse(
-        post.file_path, 
-        media_type="image/jpeg",  # or detect from file
-        filename=f"post_{post_id}.jpg"
+        post.file_path,
+        filename=post.file_path.split('/')[-1]
     )

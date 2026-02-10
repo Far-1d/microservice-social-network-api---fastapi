@@ -13,7 +13,7 @@ class NotificationManager:
             while True:
                 message = await pubsub.get_message(ignore_subscribe_messages=True)
                 if message:
-                    yield f"data: {message}\n\n"
+                    yield f"data: {message['data']}\n\n"
                 await asyncio.sleep(1)
 
     async def publish(self, user_id:str, event_type: str, data: dict):

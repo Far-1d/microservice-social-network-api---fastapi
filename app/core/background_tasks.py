@@ -1,5 +1,3 @@
-from typing import Optional
-from fastapi import Depends
 from models import post as models
 from db.database import SessionLocal  
 import uuid
@@ -20,10 +18,9 @@ async def increment_views( post_id: str ):
         if post:
             post.views += 1
             db.commit()
-
+            
     finally:
         db.close()
-
 
 async def notify_new_post(post_id: str, author_id:str):
     """Called when someone comments"""

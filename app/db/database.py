@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.dialects.sqlite import *
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
-import os
 
 # change to production level db
 SQLALCHEMY_DATABASE_URL = 'sqlite:///db.sqlite3'

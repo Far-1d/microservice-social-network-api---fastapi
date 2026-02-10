@@ -26,7 +26,7 @@ def get_access_key(user:int = 0):
         access_key = data['access']
         return data['user']['id']
 
-def t1est_get_empty_list_posts(client):
+def test_get_empty_list_posts(client):
     response = client.get("/api/posts/")
     data = response.json()
     # assert status code
@@ -191,7 +191,7 @@ def test_create_post_with_whitespace_data(client):
     # assert response data, tag length
     assert len(res_data['tags']) == 0, "no tag is added"
 
-def t1est_create_post_without_authorization(client):
+def test_create_post_without_authorization(client):
     data = {
         'caption': 'This is a test post',
         'tags': json.dumps(['one', 'two']),
@@ -212,7 +212,7 @@ def t1est_create_post_without_authorization(client):
     # assert status code
     assert response.status_code == 401
 
-def t1est_create_post_wrong_authorization(client):
+def test_create_post_wrong_authorization(client):
     data = {
         'caption': 'This is a test post',
         'tags': json.dumps(['one', 'two']),
@@ -239,7 +239,7 @@ def t1est_create_post_wrong_authorization(client):
     assert response.status_code == 401, "Unauthorized"
 
 # post ❌
-def t1est_create_post_without_file(client):
+def test_create_post_without_file(client):
     data = {
         'caption': 'This is a test post',
         'tags': json.dumps(['one', 'two']),
@@ -260,7 +260,7 @@ def t1est_create_post_without_file(client):
     assert response.status_code == 422, "file is required"
 
 # post ❌
-def t1est_create_post_with_bad_file_format(client):
+def test_create_post_with_bad_file_format(client):
 
     data = {
         'caption': 'This is a test post',
@@ -289,7 +289,7 @@ def t1est_create_post_with_bad_file_format(client):
     assert res_data['detail'].startswith('File type not allowed')
 
 # post ❌
-def t1est_create_post_with_valid_file_but_bad_format(client):
+def test_create_post_with_valid_file_but_bad_format(client):
 
     data = {
         'caption': 'This is a test post',
@@ -318,7 +318,7 @@ def t1est_create_post_with_valid_file_but_bad_format(client):
     assert res_data['detail'].startswith('File type not allowed')
 
 # post ✅
-def t1est_create_post_with_video_file(client):
+def test_create_post_with_video_file(client):
 
     data = {
         'caption': 'This is a test post',
@@ -348,7 +348,7 @@ def t1est_create_post_with_video_file(client):
     assert res_data['caption'] == data['caption']
 
 # post ❌
-def t1est_create_post_with_oversized_file(client):
+def test_create_post_with_oversized_file(client):
 
     data = {
         'caption': 'This is a test post',
@@ -377,7 +377,7 @@ def t1est_create_post_with_oversized_file(client):
     assert res_data['detail'].startswith('File size exceeds')
 
 
-def t1est_create_post_notification(client):
+def test_create_post_notification(client):
     # before this test make sure:
     # - user 2 is following user 1
     # - user 3 is not following user 1
@@ -420,10 +420,10 @@ def t1est_create_post_notification(client):
     thread3.start()
 
     # don't lower the time or connections are made after the post is created
-    time.sleep(4)
+    time.sleep(5)
     
     # user 1 creates a post 
-    get_access_key(0)
+    get_access_key()
     data = {
         'caption': 'This is a SSE test post',
     }
@@ -462,15 +462,16 @@ def t1est_create_post_notification(client):
     assert event_data['type'] == 'new_post', f"Expected 'new_post', got {event_data['type']}"
     assert event_data['data']['post_id'] == post_id, "notification must be for the post created by user 1"
 
-def t1est_get_list_posts(client):
+
+def test_get_list_posts(client):
     response = client.get("/api/posts/")
     data = response.json()
     # assert status code
     assert response.status_code == 200
     # assert return list
-    assert len(data) == 5, "5 posts must be created by now"
+    assert len(data) == 6, "6 posts must be created by now"
 
-def t1est_get_list_posts_with_authorization(client):
+def test_get_list_posts_with_authorization(client):
     headers = {
         "Authorization": f"Bearer {access_key}",
     }
@@ -482,15 +483,15 @@ def t1est_get_list_posts_with_authorization(client):
     assert len(data) == 0, "since all post are created by test user, none is shown"
 
 
-def t1est_get_list_posts_with_unknown_query(client):
+def test_get_list_posts_with_unknown_query(client):
     response = client.get("/api/posts?unknown=true")
     data = response.json()
     # assert status code
     assert response.status_code == 200
     # assert return list
-    assert len(data) == 5, "unknown query doesn't affect the result"
+    assert len(data) == 6, "unknown query doesn't affect the result"
 
-def t1est_get_list_posts_with_tag(client):
+def test_get_list_posts_with_tag(client):
     response = client.get("/api/posts?tags=one")
     data = response.json()
     # assert status code
@@ -498,7 +499,7 @@ def t1est_get_list_posts_with_tag(client):
     # assert return list
     assert len(data) == 1
 
-def t1est_get_list_posts_with_tags(client):
+def test_get_list_posts_with_tags(client):
     response = client.get("/api/posts?tags=two,three,four")
     data = response.json()
     # assert status code
@@ -506,7 +507,7 @@ def t1est_get_list_posts_with_tags(client):
     # assert return list
     assert len(data) == 3
 
-def t1est_get_list_posts_with_tag_without_post(client):
+def test_get_list_posts_with_tag_without_post(client):
     response = client.get("/api/posts?tags=five")
     data = response.json()
     # assert status code
@@ -514,7 +515,7 @@ def t1est_get_list_posts_with_tag_without_post(client):
     # assert return list
     assert len(data) == 0
 
-def t1est_get_list_posts_with_wrong_tags(client):
+def test_get_list_posts_with_wrong_tags(client):
     response = client.get("/api/posts?tags=two-three-five")
     data = response.json()
     # assert status code
@@ -549,7 +550,7 @@ def create_post_for_other_users(client):
         )
         print('response stat = ', response.status_code)
 
-def t1est_get_list_posts_with_user_id(client, create_post_for_other_users):
+def test_get_list_posts_with_user_id(client, create_post_for_other_users):
     user_id = get_access_key(1)
     response = client.get(f"/api/posts?user={user_id}")
     data = response.json()
@@ -558,7 +559,7 @@ def t1est_get_list_posts_with_user_id(client, create_post_for_other_users):
     # assert return list
     assert len(data) == 1
 
-def t1est_get_list_posts_with_bad_user_id(client):
+def test_get_list_posts_with_bad_user_id(client):
     user_id = 'abcd'
     response = client.get(f"/api/posts?user={user_id}")
     data = response.json()
@@ -567,9 +568,9 @@ def t1est_get_list_posts_with_bad_user_id(client):
     # assert detail
     assert data['detail'] == 'Invalid user id'
 
-def t1est_get_list_posts_with_unknown_user_id(client):
+def test_get_list_posts_with_unknown_user_id(client):
     # change some chars
-    user_id = get_access_key(1)[:-2]+'ab'
+    user_id = uuid.uuid4()
 
     response = client.get(f"/api/posts?user={user_id}")
     data = response.json()
@@ -578,7 +579,7 @@ def t1est_get_list_posts_with_unknown_user_id(client):
     # assert data
     assert data == []
 
-def t1est_get_post_with_valid_id(client):
+def test_get_post_with_valid_id(client):
     # find an id
     response = client.get("/api/posts/")
     data = response.json()
@@ -593,7 +594,7 @@ def t1est_get_post_with_valid_id(client):
     assert data['id'] == post_id
     assert data['caption'] == caption
 
-def t1est_get_post_with_invalid_id(client):
+def test_get_post_with_invalid_id(client):
     # find an id
     response = client.get("/api/posts/")
     data = response.json()
@@ -605,7 +606,7 @@ def t1est_get_post_with_invalid_id(client):
 
     assert response.status_code == 404
 
-def t1est_get_post_with_bad_id_format(client):
+def test_get_post_with_bad_id_format(client):
     post_id = '1234'
 
     response = client.get(f"/api/posts/{post_id}/")
@@ -665,13 +666,12 @@ def test_post_update_valid(client):
     assert res_data['caption'] == 'updated caption', "caption must be updated"
     assert all([tag['name'] in ['one', 'two', 'zero'] for tag in res_data['tags']])
 
-def test_post_update_only_caption(client):
+def test_post_update_only_tags(client):
     # get post id
     response = client.get("/api/posts/")
     post_id = response.json()[0]['id']
 
     # updating
-    get_access_key()
     data = {
         'tags': ['onetwo']
     }
@@ -688,15 +688,14 @@ def test_post_update_only_caption(client):
     res_data = response.json()
 
     assert response.status_code == 200
-    assert all([tag['name'] in ['one', 'two', 'zero'] for tag in res_data['tags']])
+    assert all([tag['name'] in ['onetwo'] for tag in res_data['tags']])
 
-def test_post_update_only_tags(client):
+def test_post_update_only_caption(client):
     # get post id
     response = client.get("/api/posts/")
     post_id = response.json()[0]['id']
 
     # updating
-    get_access_key()
     data = {
         'caption': 'updated caption',
     }
@@ -716,10 +715,10 @@ def test_post_update_only_tags(client):
     assert res_data['caption'] == 'updated caption', "caption must be updated"
 
 def test_post_update_wrong_post_id(client):
+    # random id
     post_id = uuid.uuid4()
 
     # updating
-    get_access_key()
     data = {
         'caption': 'updated caption',
         'tags': ['one', 'two', 'zero']
@@ -739,46 +738,263 @@ def test_post_update_wrong_post_id(client):
     assert response.status_code == 404
 
 def test_post_update_bad_post_id_format(client):
-    pass
+    # bad id
+    post_id = 'abc'
+
+    # updating
+    data = {
+        'caption': 'updated caption',
+        'tags': ['one', 'two', 'zero']
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+    response = client.patch(
+        f"/api/posts/{post_id}",
+        json=data,
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 400
+    assert response.json()['detail'] == 'Invalid post id'
 
 def test_post_update_no_authentication(client):
-    pass
+    # get post id
+    response = client.get("/api/posts/")
+    post_id = response.json()[0]['id']
 
-def test_post_update_unauthentication(client):
-    pass
+    # updating
+    data = {
+        'caption': 'updated caption',
+        'tags': ['one', 'two', 'zero']
+    }
+    response = client.patch(
+        f"/api/posts/{post_id}",
+        json=data,
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 401
+    assert res_data['detail'] == 'Not authenticated'
+
+def test_post_update_unauthorized(client):
+    # get post id
+    response = client.get("/api/posts/")
+    post_id = response.json()[0]['id']
+
+    # updating
+    get_access_key(1)
+    data = {
+        'caption': 'updated caption',
+        'tags': ['one', 'two', 'zero']
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+    response = client.patch(
+        f"/api/posts/{post_id}",
+        json=data,
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 403
+    assert res_data['detail'] == 'Not allowed'
 
 def test_post_update_deleted_post(client):
-    pass
+    # updating
+    get_access_key()
+    data = {
+        'caption': 'updated caption',
+        'tags': ['one', 'two', 'zero']
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+    response = client.patch(
+        f"/api/posts/{deleted_post_id}",
+        json=data,
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 404
+    assert res_data['detail'] == 'Post not found'
 
 
 def test_post_delete(client):
-    pass
+    response = client.get("/api/posts/")
+    post_id = response.json()[0]['id']
 
-def test_post_delete_unauthorized(client):
-    pass
+    # updating
+    get_access_key()
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.delete(
+        f'api/posts/{post_id}',
+        headers=headers
+    )
+
+    assert response.status_code == 204
 
 def test_post_delete_already_deleted(client):
-    pass
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.delete(
+        f'api/posts/{deleted_post_id}',
+        headers=headers
+    )
+
+    res_data = response.json()
+    assert response.status_code == 404
+    assert res_data['detail'] == 'Post not found'
+
+def test_post_delete_unauthorized(client):
+    response = client.get("/api/posts/")
+    post_id = response.json()[0]['id']
+
+    get_access_key(1)
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.delete(
+        f'api/posts/{post_id}',
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 403
+    assert res_data['detail'] == 'Not allowed'
 
 def test_post_delete_wrong_post_id(client):
-    pass
+    post_id = uuid.uuid4()
+
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.delete(
+        f'api/posts/{post_id}',
+        headers=headers
+    )
+
+    res_data = response.json()
+    assert response.status_code == 404
+    assert res_data['detail'] == 'Post not found'
 
 def test_post_delete_bad_post_id_format(client):
-    pass
+    post_id = '123abc'
+    
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.delete(
+        f'api/posts/{post_id}',
+        headers=headers
+    )
+
+    res_data = response.json()
+    assert response.status_code == 400
+    assert res_data['detail'] == 'Invalid post id'
 
 
 def test_post_media(client):
-    pass
+    response = client.get("/api/posts/")
+    post_id = response.json()[0]['id']
+
+    # every user can access media
+    get_access_key()
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.get(
+        f'api/posts/{post_id}/media/',
+        headers=headers
+    )
+    content_type = response.headers.get('Content-Type')
+
+    assert response.status_code == 200
+    assert content_type.startswith(('image/', 'video/')), \
+        f"Expected image/* or video/*, got {content_type}"
+    assert len(response.content) > 0, "Media file is empty"
 
 def test_post_media_wrong_id(client):
-    pass
+    post_id = uuid.uuid4()
+
+    # every user can access media
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.get(
+        f'api/posts/{post_id}/media/',
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 404
+    assert res_data['detail'] == 'Post not found'
 
 def test_post_media_bad_format_id(client):
-    pass
+    post_id = '123abc'
 
-def test_post_media_unauthorized(client):
-    pass
+    # every user can access media
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.get(
+        f'api/posts/{post_id}/media/',
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 400
+    assert res_data['detail'] == 'Invalid post id'
+
+def test_post_media_no_authentication(client):
+    response = client.get("/api/posts/")
+    post_id = response.json()[0]['id']
+
+    response = client.get(
+        f'api/posts/{post_id}/media/',
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 401
+    assert res_data['detail'] == 'Not authenticated'
 
 def test_post_media_deleted_post(client):
-    pass
+    headers = {
+        "Authorization": f"Bearer {access_key}",
+    }
+
+    response = client.get(
+        f'api/posts/{deleted_post_id}/media/',
+        headers=headers
+    )
+
+    res_data = response.json()
+
+    assert response.status_code == 404
+    assert res_data['detail'] == 'Post not found'
 
