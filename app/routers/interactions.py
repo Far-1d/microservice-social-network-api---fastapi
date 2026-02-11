@@ -24,8 +24,13 @@ async def toggle_like(
     user_id:str = Depends(get_current_user),
     db: Session = Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id), 
+        models.Post.id == valid_post_id, 
         models.Post.soft_delete == False
     ).first()
 
@@ -111,13 +116,21 @@ async def comment_on_post(
     user_id:str = Depends(get_current_user),
     db: Session = Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+    
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id), 
+        models.Post.id == valid_post_id, 
         models.Post.soft_delete == False
     ).first()
 
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    
+    if not comment.strip():
+        raise HTTPException(status_code=400, detail="Invalid comment")
     
     post_comment = iModels.Comment(
         post_id = post.id,
@@ -137,19 +150,45 @@ async def comment_on_post(
 
     return post_comment
 
+@router.get('/comments', response_model=List[schema.CommentResponse])
+async def list_comments_by_user(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user_id:str = Depends(get_current_user),
+    db: Session = Depends(db)
+):
+  
+    comments = (
+        db.query(iModels.Comment)
+        .filter(
+            iModels.Comment.user_id == uuid.UUID(user_id),
+            iModels.Comment.soft_delete == False
+        )
+        .order_by(iModels.Comment.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return comments
+
 
 @router.get('/comments/{post_id}', response_model=List[schema.CommentResponse])
-async def list_comments(
+async def list_comments_by_post(
     post_id:str = Path(...),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user_id:str = Depends(get_current_user),
     db: Session = Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+    
     post = (
         db.query(models.Post)
         .filter(
-            models.Post.id == uuid.UUID(post_id),
+            models.Post.id == valid_post_id,
             models.Post.soft_delete == False,
         )
         .first()
@@ -178,10 +217,15 @@ async def delete_comment(
     user_id:str = Depends(get_current_user),
     db: Session = Depends(db)
 ):
+    try:
+        valid_comment_id = uuid.UUID(comment_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid comment id")
+    
     comment = (
         db.query(iModels.Comment)
         .filter(
-            iModels.Comment.id == uuid.UUID(comment_id),
+            iModels.Comment.id == valid_comment_id,
             iModels.Comment.soft_delete == False,
         )
         .first()
@@ -206,8 +250,13 @@ async def toggle_bookmark(
     user_id:str = Depends(get_current_user),
     db: Session = Depends(db)
 ):
+    try:
+        valid_post_id = uuid.UUID(post_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post id")
+    
     post = db.query(models.Post).filter(
-        models.Post.id == uuid.UUID(post_id), 
+        models.Post.id == valid_post_id, 
         models.Post.soft_delete == False
     ).first()
 

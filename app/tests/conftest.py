@@ -25,8 +25,10 @@ engine = create_engine(
 )
 SessionTesting = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-@pytest.fixture(scope="session") # use "function" to  renew the db on each test
+# use "function" to renew the db on each test
+# use "session" to keep the db for the whole test
+# use "module" to renew db on each file
+@pytest.fixture(scope="module")
 def app() -> Generator[FastAPI, Any, None]:
     """
     Create a fresh database on each test case.
@@ -37,7 +39,7 @@ def app() -> Generator[FastAPI, Any, None]:
     yield _app
     Base.metadata.drop_all(bind=engine)
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def db_session(app: FastAPI) -> Generator[Session, Any, None]:
     """
     Creates a fresh database session for a test.

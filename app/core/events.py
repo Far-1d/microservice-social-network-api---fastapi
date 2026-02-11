@@ -29,7 +29,6 @@ class UserEventManager:
                     _data = dump['data']
                     _type = dump['type']
 
-                    print(f':::: {_type}, {message['data']}')
                     if _type == 'create':
                         await self._handle_create(_data)
                     elif _type == 'update':

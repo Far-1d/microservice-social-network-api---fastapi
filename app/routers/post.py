@@ -5,6 +5,7 @@ from fastapi import (
     HTTPException, 
     Form, 
     Query, 
+    Path,
     status, 
     BackgroundTasks
     )
@@ -324,7 +325,7 @@ async def update_post(
 
 @router.delete('/{post_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(
-    post_id: str,
+    post_id: str = Path(...),
     user_id: str = Depends(get_current_user),
     db: Session= Depends(db)
 ):

@@ -44,10 +44,3 @@ async def cache(ttl: int = 60*15):  # 15 min default
         return wrapper
     return decorator
 
-
-
-def to_serializable(obj):
-    """Convert non-JSON types to strings"""
-    if isinstance(obj, uuid.UUID):
-        return str(obj)
-    raise TypeError(f"Object {type(obj)} is not JSON serializable")
