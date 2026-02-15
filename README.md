@@ -23,7 +23,7 @@ A FastAPI-based microservice for social media post management, handling posts, l
 - **Validation**: Pydantic v2
 - **Authentication**: JWT
 - **File Handling**: Python's shutil
-- **Testing: Pytest
+- **Testing**: Pytest
 
 ---
 
