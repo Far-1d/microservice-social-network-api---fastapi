@@ -35,7 +35,7 @@ Before setting up the project, ensure you have the following installed and confi
 - Running Django User Service (for user data) 
 - Running kafka server and redis client
 ---
-## Getting Started
+## Getting Started 💻
 
 ### Running the Development Server
 
@@ -49,9 +49,9 @@ docker-compose.yml file is not shiped with this repo because the directory struc
 requires it to be in the parent folder and with have multiple docker compose and .env 
 files, i think it is better to use another repo for it. 
 
-go to [microservice-social-network-api--docker](https://github.com/Far-1d/microservice-social-network-api---docker) to see all the details
++ go to [microservice-social-network-api--docker](https://github.com/Far-1d/microservice-social-network-api---docker) to see all the details
 
-not that you can't run this app alone but you need kafka and redis running to use this app,
++ not that you can't run this app alone but you need kafka and redis running to use this app,
 either to start the server or test it.
 
 3. **Django Server**
@@ -65,7 +65,7 @@ all logs and metrics are captured and used in grafana using loki, promtail and p
 the logs and metrics are started from a different docker compose file in case you don't 
 need it. 
 
-for more info go to [microservice-social-network-api--monitoring](https://github.com/Far-1d/microservice-social-network-api---monitoring)
+*for more info go to* [microservice-social-network-api--monitoring](https://github.com/Far-1d/microservice-social-network-api---monitoring)
 
 ---
 
@@ -77,8 +77,9 @@ for more info go to [microservice-social-network-api--monitoring](https://github
 - User Account information
 - Follow/block relationships
 - User existence validation
+> [!TIP]
+>these communications are achieved both with redis pubsub and kafka's producer and consumer.
 
-these communications are achieved both with redis pubsub and kafka's producer and consumer.
 ---
 
 ## Test
@@ -93,7 +94,8 @@ pip install pytest
 pytest
 ```
 
-- in case there are failures in notifications tests, most of the time increasing the sleep time
+> [!IMPORTANT]
+> in case there are failures in notifications tests, most of the time increasing the sleep time
 fixes the failure.
 
 ---
@@ -112,6 +114,6 @@ Your contributions and feedback are highly appreciated!
 
 ---
 
-Thank you for using the Social Network API project!
+Thank you for using the Social Network API project! 🙏
 
 
