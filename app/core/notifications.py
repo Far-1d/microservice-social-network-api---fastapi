@@ -1,7 +1,7 @@
 import asyncio
 from typing import Iterable
 import json
-from core.cache import redis_client
+from app.core.cache import redis_client
 
 class NotificationManager:
     def __init__(self):

@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends
-from db.database import db, Session
-from schemas import post as schema
-from models import post as models, interaction as iModels
-from core.oauth import get_current_user
+from app.db.database import db, Session
+from app.models import post as models, interaction as iModels
+from app.core.oauth import get_current_user
 from sqlalchemy import desc, func
 import uuid
 

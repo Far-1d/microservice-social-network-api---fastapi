@@ -1,10 +1,13 @@
-from models import post as models
-from db.database import SessionLocal  
+from app.models import post as models
+from app.db.database import SessionLocal  
 import uuid
-from core.notifications import notifications
-from core.communications import request_manager, response_manager
-from core.cache import redis_client
+from app.core.notifications import notifications
+from app.core.communications import request_manager, response_manager
+from app.core.cache import redis_client
 import json
+from app.logging import get_logger
+
+bg_logger = get_logger("background_tasks")
 
 async def increment_views( post_id: str ):
     db = SessionLocal()
@@ -18,7 +21,11 @@ async def increment_views( post_id: str ):
         if post:
             post.views += 1
             db.commit()
-            
+            bg_logger.info("view_incremented", post_id=post_id)
+    
+    except Exception as e:
+        bg_logger.error("view_increment_error", post_id=post_id, error=str(e), exc_info=True)
+
     finally:
         db.close()
 
@@ -31,14 +38,17 @@ async def notify_new_post(post_id: str, author_id:str):
     # cached == follower_ids
     if cached:
         await notifications.notify_users(
-                    json.loads(cached),
-                    "new_post",
-                    {
-                        "user_id": str(author_id),
-                        "post_id": post_id,
-                        "type": "post"
-                    }
-                )
+            json.loads(cached),
+            "new_post",
+            {
+                "user_id": str(author_id),
+                "post_id": post_id,
+                "type": "post"
+            }
+        )
+        
+        bg_logger.info("notify_new_post_cached", post_id=post_id, followers=json.loads(cached))
+
     else:
         correlation_id = await request_manager.request_data(author_id, 'request-followers')
         
@@ -59,6 +69,8 @@ async def notify_new_post(post_id: str, author_id:str):
                         "type": "post"
                     }
                 )
+
+                bg_logger.info("notify_new_post_requested", post_id=post_id, followers=follower_ids)
 
 # To Do: cache likes to prevent repeating notifications
 async def notify_post_liked(post_id: str, liker_id: str, author_id: str):
@@ -82,6 +94,8 @@ async def notify_post_liked(post_id: str, liker_id: str, author_id: str):
                 }
             )
 
+            bg_logger.info("notify_post_liked", post_id=post_id, liker_id=liker_id)
+
 # To Do: cache comments to prevent repeating notifications
 async def notify_new_comment(post_id: str, commenter_id: str, author_id: str, comment: str):
     """Called when someone comments"""
@@ -96,3 +110,5 @@ async def notify_new_comment(post_id: str, commenter_id: str, author_id: str, co
                 "comment": comment
             }
         )
+
+        bg_logger.info("notify_new_comment", post_id=post_id, commenter_id=commenter_id)

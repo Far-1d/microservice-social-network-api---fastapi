@@ -10,12 +10,12 @@ from fastapi import (
     BackgroundTasks
     )
 from fastapi.responses import FileResponse
-from db.database import db, Session
-from schemas import post as schema
-from models import post as models, interaction as iModels
-from core.background_tasks import increment_views, notify_new_post
-from core.oauth import get_current_user, get_optional_user
-from dependencies import validate_upload_file
+from app.db.database import db, Session
+from app.schemas import post as schema
+from app.models import post as models, interaction as iModels
+from app.core.background_tasks import increment_views, notify_new_post
+from app.core.oauth import get_current_user, get_optional_user
+from app.dependencies import validate_upload_file
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 import shutil
@@ -24,8 +24,16 @@ import uuid
 from typing import Optional, List
 import json
 from datetime import datetime
-from core.cache import get_redis
-from core.communications import request_manager, response_manager
+from app.core.cache import get_redis
+from app.core.communications import request_manager, response_manager
+from app.logging import get_logger
+from app.metrics import (
+    posts_created_total,
+    post_views_total,
+    posts_deleted_total,
+)
+
+logger = get_logger("posts")
 
 router = APIRouter(
     prefix='/posts',
@@ -66,13 +74,24 @@ async def create_posts(
     db: Session = Depends(db),
     user_id: str = Depends(get_current_user)
 ):
-    
+    logger.info(
+        "creating_post",
+        user_id=str(user_id),
+        caption=caption,
+    )
+
     # save file
     file_path = get_file_path(file, user_id)
     try:
         with open(file_path, 'wb') as f:
             shutil.copyfileobj(file.file, f)
     except Exception as e:
+        logger.error(
+            "post_creation_failed_by_image",
+            user_id=str(user_id),
+            error=str(e),
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=f'Failed to save file: {e}')
     finally:
         file.file.close()
@@ -105,6 +124,14 @@ async def create_posts(
         db.commit()
         db.refresh(db_post)
 
+        logger.info(
+            "post_created",
+            user_id=str(user_id),
+            caption=caption,
+            post_id=str(db_post.id),
+        )
+        posts_created_total.labels(user_id=str(user_id)).inc()
+
         background_tasks.add_task(
             notify_new_post,
             db_post.id,        # post id
@@ -117,6 +144,14 @@ async def create_posts(
         # Clean up file if DB fails
         if os.path.exists(file_path):
             os.remove(file_path)
+
+        logger.error(
+            "post_creation_failed",
+            user_id=str(user_id),
+            error=str(e),
+            exc_info=True,
+        )
+
         raise HTTPException(500, f"Failed to create post: {str(e)}")
 
 @router.get('/', response_model = List[schema.PostResponse])
@@ -258,6 +293,13 @@ async def get_post_by_id(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
+    logger.info(
+        "post_viewed",
+        post_id=str(post.id),
+    )
+
+    post_views_total.labels(post_id=str(post_id)).inc()
+    
     background_tasks.add_task(increment_views, post_id)
     return post
 
@@ -282,6 +324,7 @@ async def update_post(
         raise HTTPException(status_code=404, detail="Post not found")
     
     if str(post.user_id) != user_id:
+        logger.warning("post_update_not_allowed",user_id=str(user_id),post_id=str(post.id),)
         raise HTTPException(status_code=403, detail="Not allowed")
 
     update_data = data.model_dump(exclude_unset=True)
@@ -321,6 +364,12 @@ async def update_post(
     db.add(post)
     db.commit()
     db.refresh(post)
+
+    logger.info(
+        "post_updated",
+        user_id=str(user_id),
+        post_id=str(post.id),
+    )
     return post
 
 @router.delete('/{post_id}', status_code=status.HTTP_204_NO_CONTENT)
@@ -344,12 +393,21 @@ async def delete_post(
         raise HTTPException(status_code=404, detail="Post not found")
 
     if str(post.user_id) != user_id:
+        logger.warning("post_delete_not_allowed",user_id=str(user_id),post_id=str(post.id))
         raise HTTPException(status_code=403, detail="Not allowed")
     
     post.soft_delete = True
     db.add(post)
     db.commit()
     
+    logger.info(
+        "post_deleted",
+        user_id=str(user_id),
+        post_id=str(post.id),
+    )
+    
+    posts_deleted_total.labels(user_id=str(user_id)).inc()
+
     return
 
 @router.get("/{post_id}/media/")
@@ -371,6 +429,8 @@ async def serve_post_media(
     if not post:
         raise HTTPException(404, "Post not found")
     
+    logger.info("post_media_served",user_id=str(user_id),post_id=str(post.id))
+
     return FileResponse(
         post.file_path,
         filename=post.file_path.split('/')[-1]

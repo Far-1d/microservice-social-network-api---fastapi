@@ -1,12 +1,16 @@
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from routers import post, interactions, stats, notifications
-from db import database
+from app.routers import post, interactions, stats, notifications
+from app.db import database
 from contextlib import asynccontextmanager
-from core.communications import request_manager, response_manager
-from core.cache import redis_client
-from core.events import user_events
+from app.core.communications import request_manager, response_manager
+from app.core.cache import redis_client
+from app.core.events import user_events
+from app.logging_middleware import LoggingMiddleware
+from app.logging import setup_logging
+from app.metrics import setup_metrics
+
+setup_logging()
 
 
 @asynccontextmanager
@@ -22,9 +26,9 @@ async def lifespan(app: FastAPI):
     await redis_client.ping()
     await user_events.startup()
     print('redis is ready')
-
+    
     yield  # The app runs here
-        
+    
     await response_manager.shutdown()
     await request_manager.shutdown()
     print('kafka shutdown')
@@ -44,6 +48,10 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=['*'],
                    allow_headers=['*'],
                    )
+
+app.add_middleware(LoggingMiddleware)
+
+setup_metrics(app)
 
 database.Base.metadata.create_all(bind=database.engine)
 

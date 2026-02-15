@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, UUID, DateTime, Boolean
 import uuid
 from datetime import datetime, timezone
-from db import database
+from app.db import database
 
 class BaseModel(database.Base):
     __abstract__ = True  

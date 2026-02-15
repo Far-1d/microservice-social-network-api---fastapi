@@ -5,3 +5,4 @@ project_venv/
 app/db.sqlite3
 app/test_db.sqlite3
 app/tests/media/
+.pytest_cache/

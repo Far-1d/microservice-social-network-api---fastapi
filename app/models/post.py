@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Text, String, ForeignKey, Integer, Boolean, DateTime, Table
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from models.base import BaseModel
+from app.models.base import BaseModel
 from datetime import datetime, timezone
-from db import database
+from app.db import database
 
 BaseModel.metadata.clear()
 

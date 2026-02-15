@@ -1,7 +1,7 @@
 # interaction.py
 from sqlalchemy import Column, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from models.base import BaseModel
+from app.models.base import BaseModel
 
 class Like(BaseModel):
     __tablename__ = 'likes'

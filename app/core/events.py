@@ -1,9 +1,12 @@
 import asyncio
 import json, uuid
-from core.cache import redis_client
-from db.database import SessionLocal
-from models.post import UserReference
+from app.core.cache import redis_client
+from app.db.database import SessionLocal
+from app.models.post import UserReference
 from datetime import datetime, timezone
+from app.logging import get_logger
+
+event_logger = get_logger("events")
 
 class UserEventManager:
     def __init__(self):
@@ -28,7 +31,9 @@ class UserEventManager:
                     dump = json.loads(message['data'])
                     _data = dump['data']
                     _type = dump['type']
-
+                    
+                    event_logger.info('user_events', type=_type, data=_data)
+                    
                     if _type == 'create':
                         await self._handle_create(_data)
                     elif _type == 'update':

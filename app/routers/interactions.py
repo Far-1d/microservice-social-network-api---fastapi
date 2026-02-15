@@ -1,15 +1,24 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Form, status, Path, Query
-from db.database import db, Session
-from schemas import interaction as schema, post as post_schema
-from models import (
+from app.db.database import db, Session
+from app.schemas import interaction as schema, post as post_schema
+from app.models import (
     post as models, 
     interaction as iModels
 )
-from core.oauth import get_current_user
-from core.background_tasks import notify_post_liked, notify_new_comment
+from app.core.oauth import get_current_user
+from app.core.background_tasks import notify_post_liked, notify_new_comment
 from sqlalchemy import func
 import uuid
 from typing import List
+from app.logging import get_logger
+from app.metrics import (
+    posts_liked_total,
+    comments_total,
+    bookmarks_total,
+    
+)
+
+logger = get_logger("interactions")
 
 router = APIRouter(
     prefix='/interactions',
@@ -45,6 +54,11 @@ async def toggle_like(
     if already_liked:
         db.delete(already_liked)
         db.commit()
+        
+        logger.info('post_unliked', post_id=str(post_id), user_id=str(user_id))
+
+        posts_liked_total.dec()
+
         return { 'value': 0 } # like removed
 
     like = iModels.Like(
@@ -53,6 +67,10 @@ async def toggle_like(
     )
     db.add(like)
     db.commit()
+
+    logger.info('post_liked', post_id=str(post_id), user_id=str(user_id))
+
+    posts_liked_total.inc()
 
     # like notification
     background_tasks.add_task(
@@ -140,6 +158,10 @@ async def comment_on_post(
     db.add(post_comment)
     db.commit()
     
+    logger.info('comment_created', post_id=str(post_id), user_id=str(user_id), comment=comment)
+
+    comments_total.inc()
+
     background_tasks.add_task(
         notify_new_comment,
         post_id,        # post id
@@ -241,6 +263,8 @@ async def delete_comment(
     db.add(comment)
     db.commit()
 
+    logger.info('comment_deleted', post_id=str(comment.post_id), comment_id=str(comment_id), user_id=str(user_id))
+
     return
 
 
@@ -271,6 +295,11 @@ async def toggle_bookmark(
     if already_marked:
         db.delete(already_marked)
         db.commit()
+        
+        logger.info('post_bookmark_removed', post_id=str(post_id), user_id=str(user_id))
+
+        bookmarks_total.dec()
+
         return { 'value': 0 } # bookmark removed
     
     bookmark = iModels.Bookmark(
@@ -279,6 +308,11 @@ async def toggle_bookmark(
     )
     db.add(bookmark)
     db.commit()
+    
+    logger.info('post_bookmarked', post_id=str(post_id), user_id=str(user_id))
+    
+    bookmarks_total.inc()
+
     return { 'value': 1 } # bookmarked
 
 
