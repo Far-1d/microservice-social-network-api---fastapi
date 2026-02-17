@@ -1,5 +1,4 @@
-import time
-import uuid
+import time, uuid, os, jwt
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -11,6 +10,29 @@ from app.metrics import(
 )
 
 logger = get_logger("http")
+
+SIGNING_KEY = os.environ.get("JWT_SECRET")
+ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
+
+def extract_user_id(request: Request) -> str | None:
+    """Extract user_id from JWT token in request headers."""
+    try:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return None
+        
+        token = auth_header.split(" ")[1]
+        payload = jwt.decode(
+            token,
+            SIGNING_KEY,
+            algorithms=[ALGORITHM],
+            options={"verify_signature": True, "verify_exp": True}
+        )
+        return payload.get("user_id")
+    
+    except Exception:
+        # Don't raise - middleware should never block a request
+        return None
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -30,7 +52,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         # Extract who is making the request
         client_ip = self._get_client_ip(request)
-        user_id = await self._get_user_id(request)
+        user_id = extract_user_id(request)
 
         # Bind context so all logs within this request share these fields
         structlog.contextvars.clear_contextvars()
@@ -40,11 +62,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             user_id=user_id or "anonymous",
             method=request.method,
             path=request.url.path,
-        )
-
-        logger.info(
-            "request_started",
-            query_params=str(request.query_params) or None,
         )
 
         start_time = time.perf_counter()
@@ -65,15 +82,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         finally:
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            log_fn = logger.warning if status_code >= 400 else logger.info
-            log_fn(
-                "request_finished",
-                status_code=status_code,
-                duration_ms=duration_ms,
-            )
-
-            response_time.labels(endpoint=request.url.path).observe(duration_ms)
-            response_codes.labels(status_code=str(status_code)).inc()
+            
+            if request.url.path not in ("/metrics", "/health"):
+                response_time.labels(endpoint=request.url.path).observe(duration_ms)
+                response_codes.labels(status_code=str(status_code)).inc()
+            
+                log_fn = logger.warning if status_code >= 400 else logger.info
+                log_fn(
+                    "request_finished",
+                    status_code=status_code,
+                    duration_ms=duration_ms,
+                    query_params=str(request.query_params) or None,
+                )
 
     def _get_client_ip(self, request: Request) -> str:
         # Respect X-Forwarded-For for requests behind a proxy/nginx

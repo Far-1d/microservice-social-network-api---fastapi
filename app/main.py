@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.logging import setup_logging, get_logger
+
+setup_logging()
+
 from app.routers import post, interactions, stats, notifications
 from app.db import database
 from contextlib import asynccontextmanager
@@ -7,11 +11,13 @@ from app.core.communications import request_manager, response_manager
 from app.core.cache import redis_client
 from app.core.events import user_events
 from app.logging_middleware import LoggingMiddleware
-from app.logging import setup_logging
 from app.metrics import setup_metrics
+import logging
 
-setup_logging()
 
+
+# disable uvicorn logs
+logging.getLogger('uvicorn.access').disabled = True
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

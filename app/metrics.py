@@ -77,5 +77,5 @@ def setup_metrics(app):
     """
     Instrumentator(
         should_group_status_codes=False,
-        excluded_handlers=["/metrics", "/health"],
+        excluded_handlers=["/metrics", "/health", "/docs"],
     ).instrument(app).expose(app, endpoint="/metrics")
