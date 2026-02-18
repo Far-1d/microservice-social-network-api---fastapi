@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 
 LOG_KEY_ORDER = [
     "timestamp",
-    "level",
     "status_code",
     "logger",
     "event",
@@ -16,6 +15,7 @@ LOG_KEY_ORDER = [
     "ip",
     "request_id",
     "duration_ms",
+    "level",
 ]
 
 
