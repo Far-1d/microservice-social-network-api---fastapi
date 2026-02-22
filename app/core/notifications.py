@@ -1,6 +1,6 @@
 import asyncio
 from typing import Iterable
-import json
+import json, time
 from app.core.cache import redis_client
 
 class NotificationManager:
@@ -10,11 +10,20 @@ class NotificationManager:
     async def generate_message_stream(self, client_id:str):
         async with self.redis.pubsub() as pubsub:
             await pubsub.subscribe(f'notifications:{client_id}')
+            last_ping = time.time()
             while True:
-                message = await pubsub.get_message(ignore_subscribe_messages=True)
-                if message:
-                    yield f"data: {message['data']}\n\n"
-                await asyncio.sleep(1)
+                try:
+                    message = await pubsub.get_message(ignore_subscribe_messages=True)
+                    if message:
+                        yield f"data: {message['data']}\n\n"
+                    
+                    if time.time() - last_ping > 30:
+                        yield ": ping\n\n"
+                        last_ping = time.time()
+                except:
+                    break
+            
+                await asyncio.sleep(0.1)
 
     async def publish(self, user_id:str, event_type: str, data: dict):
         client_id = f"user_{user_id}"
