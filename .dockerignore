@@ -1,0 +1,8 @@
+app/media/
+media/
+project_venv/
+**/__pycache__/
+app/test_db.sqlite3
+app/tests/media/
+.pytest_cache/
+**/*.sqlite3
